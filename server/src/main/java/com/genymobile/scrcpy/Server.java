@@ -70,7 +70,7 @@ public final class Server {
         boolean tunnelForward = options.isTunnelForward();
         boolean control = options.getControl();
         boolean sendDummyByte = options.getSendDummyByte();
-
+        Ln.i("scrcpy server started");
         try (DesktopConnection connection = DesktopConnection.open(options.getScid(), tunnelForward, control, sendDummyByte)) {
             if (options.getSendDeviceMeta()) {
                 Size videoSize = device.getScreenInfo().getVideoSize();
@@ -98,6 +98,7 @@ public final class Server {
 
             try {
                 // synchronous
+                Ln.i("Screen streaming started");
                 screenEncoder.streamScreen(device, connection.getVideoFd());
             } catch (Exception e) {
                 // this is expected on close
@@ -271,6 +272,10 @@ public final class Server {
                         options.setSendDummyByte(false);
                     }
                     break;
+                case "json_log":
+                    boolean bJsonLog = Boolean.parseBoolean(value);
+                    options.setJsonLog(bJsonLog);
+                    break;
                 default:
                     Ln.w("Unknown server option: " + key);
                     break;
@@ -329,7 +334,7 @@ public final class Server {
 
         Options options = createOptions(args);
 
-        Ln.initLogLevel(options.getLogLevel());
+        Ln.initLog(options);
 
         scrcpy(options);
     }

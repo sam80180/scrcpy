@@ -1,70 +1,66 @@
 package com.genymobile.scrcpy;
 
-import android.util.Log;
+import com.elvishew.xlog.LogConfiguration;
+import com.elvishew.xlog.LogLevel;
+import com.elvishew.xlog.XLog;
+import com.elvishew.xlog.flattener.Flattener;
+import com.elvishew.xlog.flattener.Flattener2;
+import com.elvishew.xlog.printer.AndroidPrinter;
+import com.elvishew.xlog.printer.ConsolePrinter;
+import com.elvishew.xlog.printer.Printer;
+import org.json.JSONObject;
 
 /**
  * Log both to Android logger (so that logs are visible in "adb logcat") and standard output/error (so that they are visible in the terminal
  * directly).
  */
 public final class Ln {
-
     private static final String TAG = "scrcpy";
-    private static final String PREFIX = "[server] ";
+    private static final Printer androidPrinter = new AndroidPrinter(true);
+    private static final LogConfiguration config = new LogConfiguration.Builder().tag(TAG).build();
 
-    enum Level {
-        VERBOSE, DEBUG, INFO, WARN, ERROR
+    static {
+        final Printer p = new ConsolePrinter(new MyFlattener());
+        XLog.init(config, androidPrinter, p);
     }
 
-    private static Level threshold = Level.INFO;
+    enum Level {
+        ALL(LogLevel.ALL), VERBOSE(LogLevel.VERBOSE), DEBUG(LogLevel.DEBUG), INFO(LogLevel.INFO), WARN(LogLevel.WARN), ERROR(LogLevel.ERROR), NONE(LogLevel.NONE);
+
+        private int xlog_level;
+
+        private Level(int l) {
+            this.xlog_level = l;
+        }
+
+        public int getXLogLevel() {
+            return this.xlog_level;
+        }
+    }
 
     private Ln() {
         // not instantiable
     }
 
-    /**
-     * Initialize the log level.
-     * <p>
-     * Must be called before starting any new thread.
-     *
-     * @param level the log level
-     */
-    public static void initLogLevel(Level level) {
-        threshold = level;
-    }
-
-    public static boolean isEnabled(Level level) {
-        return level.ordinal() >= threshold.ordinal();
+    public static void initLog(Options options) {
+        final Printer p = new ConsolePrinter(new MyFlattener(options));
+        XLog.init(config, androidPrinter, p);
     }
 
     public static void v(String message) {
-        if (isEnabled(Level.VERBOSE)) {
-            Log.v(TAG, message);
-            System.out.println(PREFIX + "VERBOSE: " + message);
-        }
+        XLog.v(message);
     }
 
     public static void d(String message) {
-        if (isEnabled(Level.DEBUG)) {
-            Log.d(TAG, message);
-            System.out.println(PREFIX + "DEBUG: " + message);
-        }
+        XLog.d(message);
     }
 
     public static void i(String message) {
-        if (isEnabled(Level.INFO)) {
-            Log.i(TAG, message);
-            System.out.println(PREFIX + "INFO: " + message);
-        }
+        XLog.i(message);
     }
 
     public static void w(String message, Throwable throwable) {
-        if (isEnabled(Level.WARN)) {
-            Log.w(TAG, message, throwable);
-            System.out.println(PREFIX + "WARN: " + message);
-            if (throwable != null) {
-                throwable.printStackTrace();
-            }
-        }
+        XLog.w(message, throwable);
     }
 
     public static void w(String message) {
@@ -72,16 +68,44 @@ public final class Ln {
     }
 
     public static void e(String message, Throwable throwable) {
-        if (isEnabled(Level.ERROR)) {
-            Log.e(TAG, message, throwable);
-            System.out.println(PREFIX + "ERROR: " + message);
-            if (throwable != null) {
-                throwable.printStackTrace();
-            }
-        }
+        XLog.e(message, throwable);
     }
 
     public static void e(String message) {
         e(message, null);
+    }
+
+    private static class MyFlattener implements Flattener, Flattener2 {
+        private Options options;
+
+        public MyFlattener() {
+            this(null);
+        }
+
+        public MyFlattener(Options o) {
+            this.options = o;
+        }
+
+        @Override
+        public CharSequence flatten(int logLevel, String tag, String message) {
+            return this.flatten(System.currentTimeMillis(), logLevel, tag, message);
+        }
+
+        @Override
+        public CharSequence flatten(long timeMillis, int logLevel, String tag, String message) {
+            final String strTime = Long.toString(timeMillis);
+            final String strLogLevel = LogLevel.getLevelName(logLevel);
+            if (this.options!=null && this.options.getJsonLog()) {
+                try {
+                    final JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("time", strTime);
+                    jsonObject.put("level", strLogLevel);
+                    jsonObject.put("tag", tag);
+                    jsonObject.put("message", message);
+                    return jsonObject.toString();
+                } catch (Exception e) {}
+            }
+            return String.format("[%s] %s: %s", tag, strLogLevel, message);
+        }
     }
 }

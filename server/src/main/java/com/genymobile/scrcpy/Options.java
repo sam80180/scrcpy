@@ -6,7 +6,8 @@ import java.util.List;
 
 public class Options {
     private Ln.Level logLevel = Ln.Level.DEBUG;
-    private String scid = null;
+    private String scid = null; // socket name
+    private boolean bJsonLog; // print to console in JSON format
     private int maxSize;
     private int bitRate = 8000000;
     private int maxFps;
@@ -195,5 +196,13 @@ public class Options {
 
     public void setScid(final String s) {
         this.scid = s;
+    }
+
+    public boolean getJsonLog() {
+        return this.bJsonLog;
+    }
+
+    public void setJsonLog(boolean b) {
+        this.bJsonLog = b;
     }
 }
