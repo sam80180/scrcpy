@@ -60,7 +60,7 @@ public final class Server {
         }
     }
 
-    private static void scrcpy(Options options) throws IOException {
+    private static void scrcpy(Options options) throws Exception {
         Ln.i("Device: " + Build.MANUFACTURER + " " + Build.MODEL + " (Android " + Build.VERSION.RELEASE + ")");
         final Device device = new Device(options);
         List<CodecOption> codecOptions = options.getCodecOptions();
@@ -71,7 +71,7 @@ public final class Server {
         boolean control = options.getControl();
         boolean sendDummyByte = options.getSendDummyByte();
 
-        try (DesktopConnection connection = DesktopConnection.open(tunnelForward, control, sendDummyByte)) {
+        try (DesktopConnection connection = DesktopConnection.open(options.getScid(), tunnelForward, control, sendDummyByte)) {
             if (options.getSendDeviceMeta()) {
                 Size videoSize = device.getScreenInfo().getVideoSize();
                 connection.sendDeviceMeta(Device.getDeviceName(), videoSize.getWidth(), videoSize.getHeight());
@@ -99,7 +99,7 @@ public final class Server {
             try {
                 // synchronous
                 screenEncoder.streamScreen(device, connection.getVideoFd());
-            } catch (IOException e) {
+            } catch (Exception e) {
                 // this is expected on close
                 Ln.d("Screen streaming stopped");
             } finally {
@@ -179,6 +179,9 @@ public final class Server {
             String key = arg.substring(0, equalIndex);
             String value = arg.substring(equalIndex + 1);
             switch (key) {
+                case "scid":
+                    if (!value.equals("")) { options.setScid(value); }
+                    break;
                 case "log_level":
                     Ln.Level level = Ln.Level.valueOf(value.toUpperCase(Locale.ENGLISH));
                     options.setLogLevel(level);

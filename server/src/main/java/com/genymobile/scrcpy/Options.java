@@ -6,6 +6,7 @@ import java.util.List;
 
 public class Options {
     private Ln.Level logLevel = Ln.Level.DEBUG;
+    private String scid = null;
     private int maxSize;
     private int bitRate = 8000000;
     private int maxFps;
@@ -186,5 +187,13 @@ public class Options {
 
     public void setSendDummyByte(boolean sendDummyByte) {
         this.sendDummyByte = sendDummyByte;
+    }
+
+    public String getScid() {
+        return this.scid;
+    }
+
+    public void setScid(final String s) {
+        this.scid = s;
     }
 }

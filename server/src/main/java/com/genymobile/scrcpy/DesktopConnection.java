@@ -9,6 +9,7 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.BindException;
 import java.nio.charset.StandardCharsets;
 
 public final class DesktopConnection implements Closeable {
@@ -46,11 +47,21 @@ public final class DesktopConnection implements Closeable {
         return localSocket;
     }
 
-    public static DesktopConnection open(boolean tunnelForward, boolean control, boolean sendDummyByte) throws IOException {
+    private static String getSocketName(final String scid) throws BindException {
+        final String socketName = (scid==null || scid.equals("") ? SOCKET_NAME : String.format("%s_%s", SOCKET_NAME, scid));
+        if (socketName.length()>=108) { // https://docs.racket-lang.org/unix-socket/index.html#%28def._%28%28lib._racket%2Funix-socket..rkt%29._unix-socket-path~3f%29%29
+            throw new BindException("Abstract socket name too long");
+        }
+        return socketName;
+    }
+
+    public static DesktopConnection open(final String scid, boolean tunnelForward, boolean control, boolean sendDummyByte) throws Exception {
+        final String socketName = getSocketName(scid);
+        Ln.d("scrcpy socket name: "+socketName);
         LocalSocket videoSocket;
         LocalSocket controlSocket = null;
         if (tunnelForward) {
-            LocalServerSocket localServerSocket = new LocalServerSocket(SOCKET_NAME);
+            LocalServerSocket localServerSocket = new LocalServerSocket(socketName);
             try {
                 videoSocket = localServerSocket.accept();
                 if (sendDummyByte) {
@@ -69,10 +80,10 @@ public final class DesktopConnection implements Closeable {
                 localServerSocket.close();
             }
         } else {
-            videoSocket = connect(SOCKET_NAME);
+            videoSocket = connect(socketName);
             if (control) {
                 try {
-                    controlSocket = connect(SOCKET_NAME);
+                    controlSocket = connect(socketName);
                 } catch (IOException | RuntimeException e) {
                     videoSocket.close();
                     throw e;
